@@ -78,14 +78,14 @@ def test_rewards():
     env.target = Location(1, 1)
     
     # Should get lose_reward when not reaching target
-    reward = env.step(Action.RIGHT)
+    _, reward = env.step(Action.RIGHT)
     assert reward == -1
     
     # Force state and target to be same
     env.state = Location(1, 1)
     
     # Should get win_reward when reaching target
-    reward = env.step(Action.UP)  # Any action when already at target
+    _, reward = env.step(Action.UP)  # Any action when already at target
     assert reward == 10
 
 
