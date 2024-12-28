@@ -74,7 +74,7 @@ def test_hole_interaction():
 def test_win_condition():
     env = GridWorld(n=2, m=2, seed=42)
     # Force target next to agent
-    env.state = Location(0, 0)
+    env.set_state(Location(0, 0))
     env.target = Location(1, 0)
 
     # Move to target

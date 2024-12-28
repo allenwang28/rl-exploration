@@ -1,5 +1,8 @@
 """
-n=2, m=3
+x corresponds to m
+y corresponds to n
+
+n=3, m=2
 
 s_00 s_01 s_02
 s_10 s_01 s_02
@@ -18,7 +21,7 @@ from enum import Enum
 import logging
 import random
 from dataclasses import dataclass
-from typing import Tuple
+from typing import List, Tuple
 import copy
 from colorama import init, Fore, Back, Style
 
@@ -66,12 +69,12 @@ class GridWorld:
         self.verbose = verbose
         self.log(f"Setting seed to {seed}.")
         self.target = Location(
-            x=random.randint(0, self.n - 1), y=random.randint(0, self.m - 1)
+            x=random.randint(0, self.m - 1), y=random.randint(0, self.n - 1)
         )
         self.start = copy.copy(self.target)
         while self.start == self.target:
             self.start = Location(
-                x=random.randint(0, self.n - 1), y=random.randint(0, self.m - 1)
+                x=random.randint(0, self.m - 1), y=random.randint(0, self.n - 1)
             )
         self.state = None
         self.history = []
@@ -83,21 +86,33 @@ class GridWorld:
         self.holes = set()
         self.done = False
 
-        available_spots = [(x, y) for x in range(n) for y in range(m)]
-        available_spots.remove((self.start.x, self.start.y))
-        available_spots.remove((self.target.x, self.target.y))
+        available_spots = self.get_states()
+        available_spots.remove(self.start)
+        available_spots.remove(self.target)
 
         for _ in range(num_obstacles):
             if available_spots:
-                x, y = random.choice(available_spots)
-                self.obstacles.add(Location(x=x, y=y))
-                available_spots.remove((x, y))
+                loc = random.choice(available_spots)
+                self.obstacles.add(loc)
+                available_spots.remove(loc)
         for _ in range(num_holes):
             if available_spots:
-                x, y = random.choice(available_spots)
-                self.holes.add(Location(x=x, y=y))
-                available_spots.remove((x, y))
+                loc = random.choice(available_spots)
+                self.holes.add(loc)
+                available_spots.remove(loc)
         self.reset()
+
+    def get_states(self) -> List[Location]:
+        return [Location(x=x, y=y) for x in range(self.m) for y in range(self.n)]
+
+    def get_actions(self) -> List[Action]:
+        return (Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT)
+
+    def get_state(self):
+        return self.state
+
+    def set_state(self, state: Location):
+        self.state = state
 
     def log(self, s: str):
         if self.verbose:
@@ -129,11 +144,11 @@ class GridWorld:
         x, y = self.state.as_tuple()
         if action == Action.UP and y > 0:
             y -= 1
-        elif action == Action.DOWN and y < self.n:
+        elif action == Action.DOWN and y < self.n - 1:
             y += 1
         elif action == Action.LEFT and x > 0:
             x -= 1
-        elif action == Action.RIGHT and x < self.m:
+        elif action == Action.RIGHT and x < self.m - 1:
             x += 1
         new_state = Location(x=x, y=y)
 
@@ -197,7 +212,7 @@ class GridWorld:
                 elif current_loc == self.target:
                     cell = f"{Back.GREEN}{Fore.WHITE} T {Style.RESET_ALL}"
                 elif current_loc in self.obstacles:
-                    cell = f"{Back.RED}{Fore.WHITE} # {Style.RESET_ALL}"
+                    cell = f"{Back.CYAN}{Fore.WHITE} # {Style.RESET_ALL}"
                 elif current_loc in self.holes:
                     cell = f"{Back.BLACK}{Fore.WHITE} O {Style.RESET_ALL}"
                 elif loc_key in history_map:
@@ -218,7 +233,7 @@ class GridWorld:
         # Add legend
         if show_history and self.history:
             grid.append("\nPath taken:")
-            path_str = " → ".join(
+            path_str = "  ".join(
                 [
                     f"{idx}:{ARROWS[action]}"
                     for idx, (_, action, _) in enumerate(self.history, 1)
@@ -227,8 +242,7 @@ class GridWorld:
             grid.append(path_str)
 
         rendered = "\n".join(grid)
-        if self.verbose:
-            print("\n" + rendered + "\n")
+        print("\n" + rendered + "\n")
         return rendered
 
 
