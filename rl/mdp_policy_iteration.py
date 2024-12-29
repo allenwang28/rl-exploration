@@ -124,6 +124,4 @@ if __name__ == "__main__":
     )
     logging.info("Converged in %d iterations", num_iterations)
     logging.info("Eval history: %s", eval_history)
-    logging.info(
-        "Policy evaluation iterations history: %s", policy_evaluation_iters_history
-    )
+    logging.info("Policy evaluation iterations history: %s", policy_evaluation_iters_history)
