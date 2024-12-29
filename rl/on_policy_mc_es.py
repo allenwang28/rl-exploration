@@ -1,4 +1,10 @@
-"""Implements on-policy Monte Carlo with exploring starts on GridWorld."""
+"""Implements on-policy Monte Carlo with exploring starts on GridWorld.
+
+Key findings:
+- Convergence is very finicky
+- Got major breakthroughs once we messed with the reward signals
+
+"""
 
 from gridworld.gridworld import GridWorld, Action, Location
 import logging
@@ -10,7 +16,7 @@ from typing import List, Mapping
 def evaluate(
     env: GridWorld,
     policy: Mapping[Location, Action],
-    max_steps: int = 100,
+    max_steps: int = 50,
     render: bool = False,
 ) -> int:
     """Evaluates a policy on GridWorld."""
@@ -32,7 +38,9 @@ def evaluate(
     return total_reward
 
 
-def reformat_mat(mat: Mapping[str, Mapping[str, int]], states: List[Location], actions: List[Action]):
+def reformat_mat(
+    mat: Mapping[str, Mapping[str, int]], states: List[Location], actions: List[Action]
+):
     m = []
     for state in states:
         l = []
@@ -49,13 +57,13 @@ if __name__ == "__main__":
 
     # Constants
     seed = 42
-    n = 5
-    m = 5
-    num_holes = 2
-    num_obstacles = 1
-    gamma = 0.9  # discount factor
-    mc_max_steps = 100
-    min_mc_iters = 5000
+    n = 20
+    m = 20
+    num_holes = 20
+    num_obstacles = 20
+    gamma = 0.99  # discount factor
+    mc_max_steps = 200
+    min_mc_iters = 1000
     epsilon = 0.2
     min_returns = 5
     env = GridWorld(
@@ -65,6 +73,10 @@ if __name__ == "__main__":
         num_holes=num_holes,
         seed=seed,
         verbose=False,
+        win_reward=100,
+        step_reward=-1,
+        hole_reward=-100,
+        wall_reward=-5,
     )
     logging.info("Initial state:")
     env.render()
@@ -78,57 +90,70 @@ if __name__ == "__main__":
     returns = {state: {action: [] for action in actions} for state in states}
     policy = {state: np.random.choice(actions) for state in states}
     start_pairs = set()
-
-    eval_history = [evaluate(env, policy, render=True)]
+    eval_history = [evaluate(env, policy, max_steps=mc_max_steps, render=True)]
     num_iterations = 0
 
     while num_iterations < min_mc_iters:
+        # Generate episode
         env.reset()
-        # random draw
         state = random.choice(states)
         action = random.choice(actions)
         start_pairs.add((state, action))
-        env.reset()
-        #logging.info("[Iteration %d] state %s action %s", num_iterations, state, action)
 
-        # generate an episode with the policy
-        #logging.info("[Iteration %d] Generating policy...", num_iterations)
+        # Generate episode with exploring starts and epsilon-greedy policy
         num_steps = 0
         done = False
         next_state, reward, done = env.step(action, state=state)
-        # Trajectory consists of S_t, A_t, R_{t+1}
         trajectory = [(state, action, reward)]
         state = next_state
+
         while num_steps < mc_max_steps and not done:
-            # epsilon greedy
-            if np.random.uniform(0., 1.) < epsilon:
+            # Epsilon-greedy action selection
+            if np.random.random() < epsilon:
                 action = random.choice(actions)
             else:
                 action = policy[state]
 
-            next_state, reward, done = env.step(action, state=state)
+            next_state, reward, done = env.step(action)
             trajectory.append((state, action, reward))
             state = next_state
+            if done:
+                break
             num_steps += 1
 
+        # Update Q-values and policy
         g = 0
         for i, step in enumerate(trajectory[::-1]):
             state, action, reward = step
             g = gamma * g + reward
-            prior_pairs = set(map(lambda x: (x[0], x[1]), trajectory[::-1][i+1:]))
-            if (state, action) not in prior_pairs:
+            prior_pairs = set(map(lambda x: (x[0], x[1]), trajectory[::-1][i + 1 :]))
+
+            if (state, action) not in prior_pairs:  # First-visit MC
                 returns[state][action].append(g)
 
+                # Only update policy if we have enough samples
                 if len(returns[state][action]) >= min_returns:
                     q[state][action] = np.mean(returns[state][action])
+
+                    # Find best action based on current Q-values
                     best_action = max(actions, key=lambda a: q[state][a])
                     policy[state] = best_action
 
         num_iterations += 1
-        if num_iterations >= min_mc_iters:
-            eval_history.append(evaluate(env, policy, render=True))
+
+        # Evaluate periodically
+        if num_iterations % 100 == 0:
+            eval_reward = evaluate(env, policy, max_steps=mc_max_steps, render=True)
+            eval_history.append(eval_reward)
+            logging.info(f"Iteration {num_iterations}, Reward: {eval_reward}")
         else:
-            eval_history.append(evaluate(env, policy, render=False))
+            eval_history.append(
+                evaluate(env, policy, max_steps=mc_max_steps, render=False)
+            )
+
+    # Final evaluation
+    final_reward = evaluate(env, policy, max_steps=mc_max_steps, render=True)
+    eval_history.append(final_reward)
 
     logging.info(
         "Reward for original policy was %d, for optimal policy: %d",
@@ -137,4 +162,8 @@ if __name__ == "__main__":
     )
     logging.info("Converged in %d iterations", num_iterations)
     logging.info("Eval history: %s", eval_history)
-    logging.info("Num initial SA pairs / total possible: %d / %d", len(start_pairs), len(states) * len(actions))
+    logging.info(
+        "Num initial SA pairs / total possible: %d / %d",
+        len(start_pairs),
+        len(states) * len(actions),
+    )

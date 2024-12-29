@@ -37,8 +37,9 @@ class GridWorld:
         num_obstacles: int = 0,
         num_holes: int = 0,
         win_reward: int = 10,
-        lose_reward: int = -10,
-        hole_reward: int = -100000,
+        step_reward: int = -10,
+        wall_reward: int = -25,
+        hole_reward: int = -100,
     ):
         self.seed = seed
         self.n = n
@@ -49,8 +50,9 @@ class GridWorld:
         self.state = None
         self.history = []
         self.win_reward = win_reward
-        self.lose_reward = lose_reward
+        self.step_reward = step_reward
         self.hole_reward = hole_reward
+        self.wall_reward = wall_reward
 
         self.available_states = self.get_possible_states()
         self.targets = []
@@ -141,13 +143,15 @@ class GridWorld:
             reward = self.win_reward
             done = True
         elif new_state in self.obstacles:
-            reward = self.lose_reward
+            reward = self.step_reward
             new_state = self.state
         elif new_state in self.holes:
             reward = self.hole_reward
             done = True
+        elif new_state == state:
+            reward = self.wall_reward
         else:
-            reward = self.lose_reward
+            reward = self.step_reward
 
         self.history.append((copy.copy(self.state), action, reward))
         self.log(f"Returning reward {reward}.")

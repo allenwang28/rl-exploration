@@ -57,7 +57,7 @@ def test_obstacle_interaction():
     # Try to move into obstacle
     state, reward, done = env.step(Action.RIGHT)
     assert state == initial_state  # Position shouldn't change
-    assert reward == env.lose_reward  # Should get obstacle penalty
+    assert reward == env.step_reward  # Should get obstacle penalty
     assert not done  # Shouldn't end episode
 
 
@@ -142,13 +142,13 @@ def test_boundary_conditions():
 
 
 def test_rewards():
-    env = GridWorld(n=2, m=2, win_reward=10, lose_reward=-1)
+    env = GridWorld(n=2, m=2, win_reward=10, step_reward=-1)
 
     # Force state and target to be different
     env.state = Location(0, 0)
     env.target = Location(1, 1)
 
-    # Should get lose_reward when not reaching target
+    # Should get step_reward when not reaching target
     _, reward, _ = env.step(Action.RIGHT)
     assert reward == -1
 
