@@ -7,7 +7,10 @@ from typing import Mapping
 
 
 def evaluate(
-    env: GridWorld, policy: Mapping[Location, Action], max_steps: int = 1000
+    env: GridWorld,
+    policy: Mapping[Location, Action],
+    max_steps: int = 1000,
+    render: bool = False,
 ) -> int:
     """Evaluates a policy on GridWorld."""
     env.reset()
@@ -21,9 +24,10 @@ def evaluate(
         state, reward, done = env.step(action)
         total_reward += reward
         num_steps += 1
-
-    env.render()
-    env.reset()
+        if done:
+            break
+    if render:
+        env.render()
     return total_reward
 
 
@@ -31,14 +35,15 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logging.info("Initializing mdp policy iteration.")
+
     # Constants
     seed = 42
-    n = 15
-    m = 10
-    num_holes = 10
+    n = 5
+    m = 5
+    num_holes = 5
     num_obstacles = 5
     theta = 0.001  # the stopping condition
-    gamma = 0.01  # discount factor
+    gamma = 0.9  # discount factor
     env = GridWorld(
         n=n,
         m=m,
@@ -47,16 +52,19 @@ if __name__ == "__main__":
         seed=seed,
         verbose=False,
     )
-    states = env.get_states()
-    actions = env.get_actions()
+    logging.info("Initial state:")
+    env.render()
+
+    states = env.get_possible_states()
+    actions = env.get_possible_actions()
 
     # Initializations
     np.random.seed(seed)
     values = np.random.normal(size=(len(states), 1))
     policy = {state: np.random.choice(actions) for state in states}
 
-    naive_reward = evaluate(env, policy)
-    logging.info("Reward for randomly initialized policy: %d", naive_reward)
+    eval_history = [evaluate(env, policy, render=True)]
+    logging.info("Reward for randomly initialized policy: %d", eval_history[0])
 
     num_iterations = 0
     policy_stable = False
@@ -67,7 +75,6 @@ if __name__ == "__main__":
         while True:
             delta = 0
             for i, state in enumerate(states):
-                env.reset()
                 v = values[i]
                 new_value = 0
                 action = policy[state]
@@ -90,7 +97,6 @@ if __name__ == "__main__":
             optimal_action = None
             optimal_value = None
             for action in actions:
-                env.reset()
                 env.set_state(state)
                 next_state, reward, _ = env.step(action)
                 next_state_index = states.index(next_state)
@@ -98,19 +104,22 @@ if __name__ == "__main__":
                 if optimal_value is None or projected_value > optimal_value:
                     optimal_value = projected_value
                     optimal_action = action
-            # logging.info("[Iteration: %d] For state %s, original action was %s, optimal action is %s with value of %.2f",
-            #             num_iterations, state, old_action, optimal_action, optimal_value)
             if optimal_action != old_action:
                 # not policy stable!
                 policy[state] = optimal_action
                 policy_stable = False
-                # logging.info("[Iteration: %d] Not policy stable", num_iterations)
 
         num_iterations += 1
 
-    reward = evaluate(env, policy)
+        if policy_stable:
+            eval_history.append(evaluate(env, policy, render=True))
+        else:
+            eval_history.append(evaluate(env, policy, render=False))
+
     logging.info(
         "Reward for original policy was %d, for optimal policy: %d",
-        naive_reward,
-        reward,
+        eval_history[0],
+        eval_history[-1],
     )
+    logging.info("Converged in %d iterations", num_iterations)
+    logging.info("Eval history: %s", eval_history)

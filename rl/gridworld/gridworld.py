@@ -1,27 +1,8 @@
-"""
-x corresponds to m
-y corresponds to n
-
-n=3, m=2
-
-s_00 s_01 s_02
-s_10 s_01 s_02
-
-APIs to support:
-
-env = gym.make("gridworld")
-
-env.reset()
-env.step(action)
-env.
-
-"""
-
 from enum import Enum
 import logging
 import random
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import copy
 from colorama import init, Fore, Back, Style
 
@@ -52,96 +33,97 @@ class GridWorld:
         m: int,
         seed: int = 0,
         verbose: bool = True,
-        random_start: bool = False,
+        num_targets: int = 1,
         num_obstacles: int = 0,
         num_holes: int = 0,
         win_reward: int = 10,
         lose_reward: int = -10,
-        hole_reward: int = -100,
+        hole_reward: int = -100000,
     ):
-        if m == n == 1:
-            raise AssertionError("world size cannot be 1.")
         self.seed = seed
         self.n = n
         self.m = m
-        self.random_start = random_start
         random.seed(seed)
         self.verbose = verbose
         self.log(f"Setting seed to {seed}.")
-        self.target = Location(
-            x=random.randint(0, self.m - 1), y=random.randint(0, self.n - 1)
-        )
-        self.start = copy.copy(self.target)
-        while self.start == self.target:
-            self.start = Location(
-                x=random.randint(0, self.m - 1), y=random.randint(0, self.n - 1)
-            )
         self.state = None
         self.history = []
         self.win_reward = win_reward
         self.lose_reward = lose_reward
         self.hole_reward = hole_reward
 
-        self.obstacles = set()
-        self.holes = set()
+        self.available_states = self.get_possible_states()
+        self.targets = []
+        for _ in range(num_targets):
+            self.targets.append(self.get_and_assign_random_state())
+        self.start = self.get_and_assign_random_state()
+        self.obstacles = []
+        self.holes = []
         self.done = False
-
-        available_spots = self.get_states()
-        available_spots.remove(self.start)
-        available_spots.remove(self.target)
-
         for _ in range(num_obstacles):
-            if available_spots:
-                loc = random.choice(available_spots)
-                self.obstacles.add(loc)
-                available_spots.remove(loc)
+            self.obstacles.append(self.get_and_assign_random_state())
         for _ in range(num_holes):
-            if available_spots:
-                loc = random.choice(available_spots)
-                self.holes.add(loc)
-                available_spots.remove(loc)
+            self.holes.append(self.get_and_assign_random_state())
         self.reset()
 
-    def get_states(self) -> List[Location]:
+    def get_possible_states(self) -> List[Location]:
         return [Location(x=x, y=y) for x in range(self.m) for y in range(self.n)]
 
-    def get_actions(self) -> List[Action]:
+    def get_available_states(self) -> List[Location]:
+        return self.available_states
+
+    def get_and_assign_random_state(self):
+        """Assigns a random state from the available states."""
+        if not self.available_states:
+            raise AssertionError(
+                "Could not assign a random state, implying that the space is not large enough."
+            )
+        state = random.choice(self.get_available_states())
+        self.available_states.remove(state)
+        return state
+
+    def get_possible_actions(self) -> List[Action]:
         return (Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT)
 
     def get_state(self):
         return self.state
 
+    def get_start(self):
+        return self.start
+
     def set_state(self, state: Location):
         self.state = state
+
+    def is_terminal(self, state: Location):
+        terminal_states = self.targets + self.obstacles + self.holes
+        return state in terminal_states
 
     def log(self, s: str):
         if self.verbose:
             logging.info("%s", s)
 
-    def reset(self) -> Location:
-        self.done = False
+    def reset(self, random_start: bool = False) -> Location:
         self.history = []
-        if self.random_start:
-            self.state = Location(
-                x=random.randint(0, self.m - 1), y=random.randint(0, self.m - 1)
-            )
-            while self.state in self.holes or self.state in self.obstacles:
-                self.state = Location(
-                    x=random.randint(0, self.m - 1), y=random.randint(0, self.m - 1)
-                )
+        if random_start:
+            self.state = random.choice(self.get_available_states())
         else:
             self.state = copy.copy(self.start)
         self.log(f"Starting at {self.state}")
-        self.log(f"Target is {self.target}")
+        self.log(f"Target is {self.targets}")
         return self.state
 
-    def step(self, action: Action) -> Tuple[Location, int, bool]:
-        if self.done:
-            self.log("Episode is already done!")
+    def step(
+        self, action: Action, state: Optional[Location] = None
+    ) -> Tuple[Location, int, bool]:
+        if not state:
+            state = self.state
+
+        if self.is_terminal(state):
+            self.log("State is terminal")
             return copy.copy(self.state), 0, True
 
-        self.log(f"From {self.state}, taking action {action}.")
-        x, y = self.state.as_tuple()
+        self.log(f"From {state}, taking action {action}.")
+        x, y = state.as_tuple()
         if action == Action.UP and y > 0:
             y -= 1
         elif action == Action.DOWN and y < self.n - 1:
@@ -151,24 +133,24 @@ class GridWorld:
         elif action == Action.RIGHT and x < self.m - 1:
             x += 1
         new_state = Location(x=x, y=y)
-
-        self.log(f"New location: {self.state}")
-        if new_state == self.target:
+        done = False
+        self.log(f"New location: {new_state}")
+        if new_state in self.targets:
             reward = self.win_reward
-            self.done = True
+            done = True
         elif new_state in self.obstacles:
             reward = self.lose_reward
             new_state = self.state
         elif new_state in self.holes:
             reward = self.hole_reward
-            self.done = True
+            done = True
         else:
             reward = self.lose_reward
 
         self.history.append((copy.copy(self.state), action, reward))
         self.log(f"Returning reward {reward}.")
         self.state = new_state
-        return copy.copy(self.state), reward, self.done
+        return copy.copy(self.state), reward, done
 
     def render(self, show_history: bool = True) -> str:
         """Renders the current state of the grid world with colors and box drawings.
@@ -209,7 +191,7 @@ class GridWorld:
 
                 if current_loc == self.state:
                     cell = f"{Back.BLUE}{Fore.WHITE} A {Style.RESET_ALL}"
-                elif current_loc == self.target:
+                elif current_loc in self.targets:
                     cell = f"{Back.GREEN}{Fore.WHITE} T {Style.RESET_ALL}"
                 elif current_loc in self.obstacles:
                     cell = f"{Back.CYAN}{Fore.WHITE} # {Style.RESET_ALL}"

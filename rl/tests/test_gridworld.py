@@ -21,33 +21,38 @@ def test_init():
     assert len(env.obstacles) == 2
     assert len(env.holes) == 1
     # Ensure obstacles and holes don't overlap with start and target
-    assert (env.start.x, env.start.y) not in env.obstacles
-    assert (env.target.x, env.target.y) not in env.obstacles
-    assert (env.start.x, env.start.y) not in env.holes
-    assert (env.target.x, env.target.y) not in env.holes
+    assert env.start not in env.obstacles
+    assert env.start not in env.holes
+    for target in env.targets:
+        assert target not in env.obstacles
+    for target in env.targets:
+        assert target not in env.holes
 
 
 def test_reset():
     env = GridWorld(n=2, m=3, seed=42)
     initial_state = env.state
     initial_start = env.start
-    initial_target = env.target
+    initial_targets = env.targets
+    initial_holes = env.holes
+    initial_obstacles = env.obstacles
 
     env.reset()
     assert env.state == initial_state
     assert env.start == initial_start
-    assert env.target == initial_target
-    assert not env.done
+    assert env.targets == initial_targets
+    assert env.holes == initial_holes
+    assert env.obstacles == initial_obstacles
 
 
 def test_obstacle_interaction():
-    env = GridWorld(n=2, m=2, num_obstacles=1, seed=42)
+    env = GridWorld(n=2, m=2, seed=42)
     initial_state = copy.copy(env.state)
 
     # Force an obstacle right next to the agent
     obstacle_x = min(initial_state.x + 1, env.m)
     obstacle_y = initial_state.y
-    env.obstacles = {Location(obstacle_x, obstacle_y)}
+    env.obstacles = [Location(obstacle_x, obstacle_y)]
 
     # Try to move into obstacle
     state, reward, done = env.step(Action.RIGHT)
@@ -57,13 +62,13 @@ def test_obstacle_interaction():
 
 
 def test_hole_interaction():
-    env = GridWorld(n=2, m=2, num_holes=1, seed=42)
+    env = GridWorld(n=2, m=2, seed=42)
     initial_state = copy.copy(env.state)
 
     # Force a hole right next to the agent
     hole_x = min(initial_state.x + 1, env.m)
     hole_y = initial_state.y
-    env.holes = {Location(hole_x, hole_y)}
+    env.holes = [Location(hole_x, hole_y)]
 
     # Try to move into hole
     state, reward, done = env.step(Action.RIGHT)
@@ -74,14 +79,13 @@ def test_hole_interaction():
 def test_win_condition():
     env = GridWorld(n=2, m=2, seed=42)
     # Force target next to agent
-    env.set_state(Location(0, 0))
-    env.target = Location(1, 0)
+    env.targets = [Location(1, 0)]
 
     # Move to target
-    state, reward, done = env.step(Action.RIGHT)
+    state, reward, done = env.step(Action.RIGHT, state=Location(0, 0))
     assert reward == env.win_reward
     assert done
-    assert state == env.target
+    assert state == env.targets[0]
 
 
 def test_done_state():
@@ -101,16 +105,11 @@ def test_done_state():
 
 
 def test_reset_with_random_start():
-    env = GridWorld(n=2, m=3, seed=42, random_start=True)
-    initial_state = env.state
-    initial_start = env.start
-    initial_target = env.target
-
-    env.reset()
-    assert env.state != initial_state
-    assert env.start == initial_start
-    assert env.target == initial_target
-    assert not env.done
+    env = GridWorld(n=2, m=3, seed=42)
+    env.reset(random_start=True)
+    state = env.get_state()
+    start = env.get_start()
+    assert state != start
 
 
 def test_step_movement():
