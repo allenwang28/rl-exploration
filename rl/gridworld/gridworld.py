@@ -94,9 +94,11 @@ class GridWorld:
     def set_state(self, state: Location):
         self.state = state
 
+    def get_terminal_states(self):
+        return self.targets + self.obstacles + self.holes
+
     def is_terminal(self, state: Location):
-        terminal_states = self.targets + self.obstacles + self.holes
-        return state in terminal_states
+        return state in self.get_terminal_states()
 
     def log(self, s: str):
         if self.verbose:
@@ -115,7 +117,7 @@ class GridWorld:
     def step(
         self, action: Action, state: Optional[Location] = None
     ) -> Tuple[Location, int, bool]:
-        if not state:
+        if state is None:
             state = self.state
 
         if self.is_terminal(state):

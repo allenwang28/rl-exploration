@@ -64,6 +64,7 @@ if __name__ == "__main__":
     policy = {state: np.random.choice(actions) for state in states}
 
     eval_history = [evaluate(env, policy, render=True)]
+    policy_evaluation_iters_history = []
     logging.info("Reward for randomly initialized policy: %d", eval_history[0])
 
     num_iterations = 0
@@ -79,8 +80,7 @@ if __name__ == "__main__":
                 new_value = 0
                 action = policy[state]
 
-                env.set_state(state)
-                next_state, reward, _ = env.step(action)
+                next_state, reward, _ = env.step(action, state=state)
                 next_state_index = states.index(next_state)
                 new_value = reward + gamma * values[next_state_index]
                 delta = max(delta, abs(v - new_value))
@@ -88,6 +88,7 @@ if __name__ == "__main__":
             pe_i += 1
             if delta < theta:
                 # logging.info("[Iteration %d] Policy evaluated completed in %d steps", num_iterations, pe_i)
+                policy_evaluation_iters_history.append(pe_i)
                 break
 
         # Policy improvement
@@ -123,3 +124,6 @@ if __name__ == "__main__":
     )
     logging.info("Converged in %d iterations", num_iterations)
     logging.info("Eval history: %s", eval_history)
+    logging.info(
+        "Policy evaluation iterations history: %s", policy_evaluation_iters_history
+    )
