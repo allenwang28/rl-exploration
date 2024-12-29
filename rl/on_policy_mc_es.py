@@ -38,18 +38,6 @@ def evaluate(
     return total_reward
 
 
-def reformat_mat(
-    mat: Mapping[str, Mapping[str, int]], states: List[Location], actions: List[Action]
-):
-    m = []
-    for state in states:
-        l = []
-        for action in actions:
-            l.append(mat[state][action])
-        m.append(l)
-    return m
-
-
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
