@@ -9,7 +9,11 @@ I believe this is inherent because it is balancing exploration and exploitation.
 We should expect that as the run goes longer, we should be decaying i.e. the learning rate, else SARSA
 will keep making updates even after we've converged to the optimal policy.
 
-We could decay both epsilon (in e-greedy) and learning rate
+We could decay both epsilon (in e-greedy) and learning rate. This seems to help a lot with stability.
+
+Too big of a decay rate means that the learning rate / epsilon decay too quickly, meaning we never find the optimal policy.
+
+Too small means we don't guarantee stability later in the run.
 
 """
 
@@ -57,10 +61,10 @@ if __name__ == "__main__":
     num_obstacles = 0
     step_size = 0.8
     gamma = 0.9
-    num_episodes = 35
+    num_episodes = 100
     max_steps_per_episode = 100
-    min_mc_iters = 1000
     epsilon = 0.1
+    decay_rate = 0.01
     env = GridWorld(
         n=n,
         m=m,
@@ -100,7 +104,7 @@ if __name__ == "__main__":
         state = np.random.choice(states)
         drawn_states.add(state)
 
-        if np.random.uniform(0.0, 1.0) < epsilon:
+        if np.random.uniform(0.0, 1.0) < epsilon / (1 + decay_rate * num_iterations):
             action = np.random.choice(actions)
         else:
             action = policy(state)
@@ -109,12 +113,16 @@ if __name__ == "__main__":
         while not done:
             next_state, reward, done = env.step(action, state=state)
 
-            if np.random.uniform(0.0, 1.0) < epsilon:
+            if np.random.uniform(0.0, 1.0) < epsilon / (
+                1 + decay_rate * num_iterations
+            ):
                 next_action = np.random.choice(actions)
             else:
                 next_action = policy(state)
-            q[state][action] += step_size * (
-                reward + gamma * q[next_state][next_action] - q[state][action]
+            q[state][action] += (
+                step_size
+                / (1 + decay_rate * num_iterations)
+                * (reward + gamma * q[next_state][next_action] - q[state][action])
             )
             state = next_state
             action = next_action
