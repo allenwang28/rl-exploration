@@ -1,21 +1,4 @@
-"""Implements SARSA.
-
-My observations:
-- SARSA quickly finds the optimal solution, but it can quickly oscillate itself out of an optimal policy
-if it's allowed to run long enough.
-
-I believe this is inherent because it is balancing exploration and exploitation.
-
-We should expect that as the run goes longer, we should be decaying i.e. the learning rate, else SARSA
-will keep making updates even after we've converged to the optimal policy.
-
-We could decay both epsilon (in e-greedy) and learning rate. This seems to help a lot with stability.
-
-Too big of a decay rate means that the learning rate / epsilon decay too quickly, meaning we never find the optimal policy.
-
-Too small means we don't guarantee stability later in the run.
-
-"""
+"""Implements Q-learning."""
 
 from gridworld.gridworld import GridWorld, Action, Location
 import logging
@@ -55,16 +38,16 @@ if __name__ == "__main__":
 
     # Constants
     seed = 42
-    n = 5
-    m = 5
-    num_holes = 0
-    num_obstacles = 0
+    n = 10
+    m = 10
+    num_holes = 5
+    num_obstacles = 10
     step_size = 0.8
     gamma = 0.9
     num_episodes = 100
     max_steps_per_episode = 100
     epsilon = 0.1
-    decay_rate = 0.01
+    decay_rate = 0.0
     env = GridWorld(
         n=n,
         m=m,
@@ -72,7 +55,7 @@ if __name__ == "__main__":
         num_holes=num_holes,
         seed=seed,
         verbose=False,
-        win_reward=1000,
+        win_reward=10,
         step_reward=-1,
         hole_reward=-1000,
         wall_reward=-5,
@@ -104,28 +87,27 @@ if __name__ == "__main__":
         state = np.random.choice(states)
         drawn_states.add(state)
 
-        if np.random.uniform(0.0, 1.0) < epsilon / (1 + decay_rate * num_iterations):
-            action = np.random.choice(actions)
-        else:
-            action = policy(state)
-
         done = False
         while not done:
-            next_state, reward, done = env.step(action, state=state)
-
             if np.random.uniform(0.0, 1.0) < epsilon / (
                 1 + decay_rate * num_iterations
             ):
-                next_action = np.random.choice(actions)
+                action = np.random.choice(actions)
             else:
-                next_action = policy(state)
+                action = policy(state)
+
+            next_state, reward, done = env.step(action, state=state)
+
             q[state][action] += (
                 step_size
                 / (1 + decay_rate * num_iterations)
-                * (reward + gamma * q[next_state][next_action] - q[state][action])
+                * (
+                    reward
+                    + gamma * max(q[next_state][a] for a in actions)
+                    - q[state][action]
+                )
             )
             state = next_state
-            action = next_action
 
         if num_iterations % 100 == 0:
             eval_reward = evaluate(
