@@ -57,7 +57,7 @@ if __name__ == "__main__":
     seed = 42
     n = 5
     m = 5
-    num_holes = 0
+    num_holes = 3
     num_obstacles = 0
     step_size = 0.8
     gamma = 0.9

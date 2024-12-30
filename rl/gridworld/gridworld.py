@@ -99,6 +99,9 @@ class GridWorld:
     def get_terminal_states(self):
         return self.targets + self.obstacles + self.holes
 
+    def get_non_terminal_states(self):
+        return list(set(self.get_possible_states()) - set(self.get_terminal_states()))
+
     def is_terminal(self, state: Location):
         return state in self.get_terminal_states()
 
@@ -185,13 +188,13 @@ class GridWorld:
         # Build the grid content
         grid = []
         # Add top border
-        width = (self.m + 1) * 4 + 3  # Adjust width for 0 to m inclusive
+        width = (self.m) * 4 + 3  # Adjust width for 0 to m inclusive
         grid.append(TOP_LEFT + HORIZONTAL * width + TOP_RIGHT)
 
         # Add grid content
-        for y in range(self.n + 1):  # Include n
+        for y in range(self.n):  # Include n
             row = [VERTICAL + " "]  # Left border
-            for x in range(self.m + 1):  # Include m
+            for x in range(self.m):  # Include m
                 current_loc = Location(x=x, y=y)
                 loc_key = f"{x},{y}"
 
