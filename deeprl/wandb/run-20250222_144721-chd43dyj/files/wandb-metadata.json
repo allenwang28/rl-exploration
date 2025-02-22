@@ -1,0 +1,44 @@
+{
+  "os":  "macOS-15.3.1-arm64-arm-64bit",
+  "python":  "CPython 3.10.16",
+  "startedAt":  "2025-02-22T20:47:21.374739Z",
+  "program":  "/Users/allenwang/workspace/rl-exploration/deeprl/cartpole_reinforce.py",
+  "codePath":  "deeprl/cartpole_reinforce.py",
+  "git":  {
+    "remote":  "https://github.com/allenwang28/rl-exploration.git",
+    "commit":  "8e188c6d38c5ec28e2c956d8cfd8ac2e6565bbb2"
+  },
+  "email":  "wandb@allenw.xyz",
+  "root":  "/Users/allenwang/workspace/rl-exploration/deeprl",
+  "host":  "MacBookPro.localdomain",
+  "executable":  "/Users/allenwang/miniconda3/envs/rl/bin/python",
+  "codePathLocal":  "cartpole_reinforce.py",
+  "cpu_count":  10,
+  "cpu_count_logical":  10,
+  "disk":  {
+    "/":  {
+      "total":  "1995218165760",
+      "used":  "1836854878208"
+    },
+    "/System/Volumes/Data":  {
+      "total":  "1995218165760",
+      "used":  "1836854878208"
+    }
+  },
+  "memory":  {
+    "total":  "17179869184"
+  },
+  "cpu":  {
+    "count":  10,
+    "countLogical":  10
+  },
+  "apple":  {
+    "name":  "Apple M1 Pro",
+    "ecpuCores":  2,
+    "pcpuCores":  8,
+    "gpuCores":  16,
+    "memoryGb":  16,
+    "swapTotalBytes":  "3221225472",
+    "ramTotalBytes":  "17179869184"
+  }
+}
